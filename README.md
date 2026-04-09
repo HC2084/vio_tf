@@ -6,7 +6,9 @@
 
 Starts: static `imu` → `base_link`, `mocap_rot.py`, `tf_odom_rot.py`, `odom_mocap_rot.py`.
 
-**Inputs (from the rest of your stack)**
+Launch with rosbag or mocap data. Transforms mocap odom as well as vio odom.
+
+**Inputs**
 
 | Kind | Name | Type / note |
 |------|------|-------------|
@@ -14,7 +16,7 @@ Starts: static `imu` → `base_link`, `mocap_rot.py`, `tf_odom_rot.py`, `odom_mo
 | Topic | `/ov_msckf/odomimu` | `nav_msgs/Odometry` — OpenVINS IMU odometry in **`global`** / **`imu`** (used by `tf_odom_rot.py`) |
 
 
-**Outputs (from this launch)**
+**Outputs**
 
 | Kind | Name | Type / note |
 |------|------|-------------|
@@ -33,14 +35,16 @@ roslaunch vio_tf vio_tf.launch
 
 Starts: static `imu` → `base_link` and **`tf_odom_rot.py` only** (no mocap nodes).
 
-**Inputs (from the rest of your stack)**
+Launch with VIO odom only. Computes vio odom transform. 
+
+**Inputs**
 
 | Kind | Name | Type / note |
 |------|------|-------------|
 | Topic | `/ov_msckf/odomimu` | `nav_msgs/Odometry` — OpenVINS IMU odometry |
 | TF | VIO / your stack | Must provide a connected TF chain so lookups **`global` ← `base_link`** and **`base_link` ← `imu`** succeed (this launch does **not** publish `world` → `global`; add `rot.py` separately or another `global` origin if needed) |
 
-**Outputs (from this launch)**
+**Outputs**
 
 | Kind | Name | Type / note |
 |------|------|-------------|
