@@ -1,0 +1,9 @@
+<launch>
+  <!-- imu -> base_link extrinsic (same as: rosrun tf2_ros static_transform_publisher ...) -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="imu_base_link_static"
+        args="0 0.0402 -0.0896 0.0 -1.57 1.57 imu base_link" />
+
+  <node pkg="vio_tf" type="mocap_rot.py" name="world_to_global_publisher" output="screen" />
+  <node pkg="vio_tf" type="tf_odom_rot.py" name="odom_frame_transformer" output="screen" />
+  <node pkg="vio_tf" type="odom_mocap_rot.py" name="global_to_mocap_node" output="screen" />
+</launch>
