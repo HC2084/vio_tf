@@ -1,18 +1,5 @@
 # vio_tf
 
-ROS Noetic package: static **imu → base_link** extrinsics and Python nodes that align mocap / OpenVINS frames via TF.
-
-## Build
-
-From your catkin workspace:
-
-```bash
-cd /path/to/vio_ws
-source /opt/ros/noetic/setup.bash
-catkin_make   # or catkin build vio_tf
-source devel/setup.bash
-```
-
 ## Launch files
 
 ### `vio_tf.launch`
