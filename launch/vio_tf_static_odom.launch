@@ -1,8 +1,9 @@
 <launch>
   <!-- imu -> base_link extrinsic -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="imu_base_link_static"
-        args="0 0.0402 -0.0896 0.0 -1.57 1.57 imu base_link" />
+      args="0 0.0402 -0.0896 1.499 -0.022 1.629 imu base_link" />
 
+  <!-- $$[-1.62917455, \quad 0.02203393, \quad -1.49932381]$$ -->
   <!-- OpenVINS odom -> base_link in global frame (requires world->global TF from elsewhere if needed) -->
   <node pkg="vio_tf" type="tf_odom_rot.py" name="odom_frame_transformer" output="screen" />
 </launch>

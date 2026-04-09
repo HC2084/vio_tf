@@ -1,67 +1,73 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import rospy
 import tf2_ros
 import tf2_geometry_msgs
+import numpy as np
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped
-from tf.transformations import euler_from_quaternion
+from geometry_msgs.msg import PoseStamped, Vector3Stamped
+from tf.transformations import quaternion_matrix, inverse_matrix
 
 class GlobalToMocapProvider:
     def __init__(self):
         rospy.init_node('global_to_mocap_node')
 
-        # 1. Setup TF Buffer
         self.tf_buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tf_buffer)
 
-        # 2. Subs and Pubs
-        # We listen to the Mocap Odometry
         self.sub = rospy.Subscriber('/natnet_ros/kingfisher/odom', Odometry, self.callback)
-        # We publish the Mocap's position expressed in the OpenVINS 'global' frame
         self.pub = rospy.Publisher('/natnet_ros/mocap_in_global', Odometry, queue_size=10)
-
-        rospy.loginfo("Computing Global -> Mocap Pose...")
 
     def callback(self, msg):
         try:
-            # Look up the transform from Global to World
-            # This uses the static world->global transform you just created
-            # but reverses it (target: global, source: world)
+            # 1. Get the map-to-map alignment
+            # This 'transform' contains the EXACT rotation between Mocap and VIO maps
             transform = self.tf_buffer.lookup_transform(
-                "global", 
-                "world", 
-                rospy.Time(0), 
-                rospy.Duration(0.1)
-            )
+                "global", "world", rospy.Time(0), rospy.Duration(0.1))
 
-            # --- TRANSFORM THE MOCAP POSE ---
-            # We take the Mocap pose (which is in 'world') and move it to 'global'
+            # 2. Transform the Pose
             ps = PoseStamped()
             ps.header = msg.header
             ps.pose = msg.pose.pose
-            
             ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform)
 
-            # --- CONSTRUCT NEW MESSAGE ---
-            out_msg = Odometry()
-            out_msg.header = msg.header
-            out_msg.header.frame_id = "global"
-            out_msg.child_frame_id = "mocap_pose_in_global"
+            # 3. ROTATION LOGIC
+            # R1: Room -> VIO Map
+            q_map = [transform.transform.rotation.x, transform.transform.rotation.y, 
+                     transform.transform.rotation.z, transform.transform.rotation.w]
+            R_world_to_global = quaternion_matrix(q_map)
 
-            out_msg.pose.pose = ps_transformed.pose
+            # R2: VIO Map -> Drone Body
+            q_body = [ps_transformed.pose.orientation.x, 
+                      ps_transformed.pose.orientation.y, 
+                      ps_transformed.pose.orientation.z, 
+                      ps_transformed.pose.orientation.w]
+            R_global_to_body = inverse_matrix(quaternion_matrix(q_body))
+
+            # 4. Apply both rotations to the velocity vector
+            v_world = np.array([msg.twist.twist.linear.x, 
+                                msg.twist.twist.linear.y, 
+                                msg.twist.twist.linear.z, 0])
             
-            # Print RPY of the Mocap relative to the Global origin
-            q = ps_transformed.pose.orientation
-            (r, p, y) = euler_from_quaternion([q.x, q.y, q.z, q.w])
-            rospy.loginfo_throttle(1, "Mocap in Global - Pos: [%.2f, %.2f], Yaw: %.2f deg", 
-                                   out_msg.pose.pose.position.x, 
-                                   out_msg.pose.pose.position.y, 
-                                   y * 57.2958)
+            # This step converts 'Room Velocity' to 'Body Velocity' 
+            # while accounting for the map rotation
+            # v_global = np.dot(R_world_to_global, v_world)
+            v_body = np.dot(R_global_to_body, v_world)
+
+            # 5. Construct Message
+            out_msg = Odometry()
+            out_msg.header.stamp = msg.header.stamp
+            out_msg.header.frame_id = "global"
+            out_msg.child_frame_id = "mocap_body"
+            
+            out_msg.pose.pose = ps_transformed.pose
+            out_msg.twist.twist.linear.x = v_body[0]
+            out_msg.twist.twist.linear.y = v_body[1]
+            out_msg.twist.twist.linear.z = v_body[2]
 
             self.pub.publish(out_msg)
 
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            rospy.logwarn_throttle(5, "Waiting for world->global transform: %s" % str(e))
+        except Exception as e:
+            rospy.logwarn_throttle(5, str(e))
 
 if __name__ == '__main__':
     GlobalToMocapProvider()
