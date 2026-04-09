@@ -5,5 +5,13 @@
 
   <node pkg="vio_tf" type="mocap_rot.py" name="world_to_global_publisher" output="screen" />
   <node pkg="vio_tf" type="tf_odom_rot.py" name="odom_frame_transformer" output="screen" />
-  <node pkg="vio_tf" type="odom_mocap_rot.py" name="global_to_mocap_node" output="screen" />
+  <node pkg="vio_tf" type="odom_mocap_rot.py" name="global_to_mocap_node" output="screen">
+    <!-- Static mocap-rigid-body -> body alignment (radians). -->
+    <param name="body_roll_offset" value="0.0" />
+    <param name="body_pitch_offset" value="0.0" />
+    <param name="body_yaw_offset" value="-1.57079632679" />
+    <!-- Derive velocity from mocap pose deltas for more stable world-frame linear velocity. -->
+    <param name="use_pose_velocity" value="true" />
+    <param name="pose_vel_alpha" value="0.25" />
+  </node>
 </launch>
