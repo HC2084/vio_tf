@@ -5,6 +5,7 @@ import tf2_geometry_msgs
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Vector3Stamped
 
+
 class OdomFrameTransformer:
     def __init__(self):
         rospy.init_node('odom_frame_transformer')
@@ -17,7 +18,10 @@ class OdomFrameTransformer:
         # Input: OpenVINS providing IMU pose in Global frame
         self.sub = rospy.Subscriber('/ov_msckf/odomimu', Odometry, self.callback)
         # Output: Robot Base pose in the Map (Mocap) frame
-        self.pub = rospy.Publisher('/ov_msckf/base_link_corrected', Odometry, queue_size=10)
+        self.pub = rospy.Publisher('/ov_msckf/odomimu_corrected', Odometry, queue_size=10)
+        self.pub_pose = rospy.Publisher(
+            '/ov_msckf/poseimu_corrected', PoseStamped, queue_size=10
+        )
         
         rospy.loginfo("Transformer initialized. Mapping [world -> global -> imu -> base_link]")
 
@@ -68,6 +72,11 @@ class OdomFrameTransformer:
             out_msg.twist.twist.angular = v_ang_transformed.vector
 
             self.pub.publish(out_msg)
+
+            pose_out = PoseStamped()
+            pose_out.header = out_msg.header
+            pose_out.pose = out_msg.pose.pose
+            self.pub_pose.publish(pose_out)
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             rospy.logwarn_throttle(5, "Waiting for TF chain [map -> global -> imu -> base_link]: %s" % str(e))
