@@ -71,6 +71,10 @@ class OdomFrameTransformer:
             out_msg.twist.twist.linear = v_lin_transformed.vector
             out_msg.twist.twist.angular = v_ang_transformed.vector
 
+            # Preserve covariances from the filter (same frame convention as input odomimu)
+            out_msg.pose.covariance = list(msg.pose.covariance)
+            out_msg.twist.covariance = list(msg.twist.covariance)
+
             self.pub.publish(out_msg)
 
             pose_out = PoseStamped()
